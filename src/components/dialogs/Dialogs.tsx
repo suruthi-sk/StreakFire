@@ -213,7 +213,7 @@ export function SettingsDialog() {
         {user ? (
           <div className="acts" style={{ justifyContent: 'flex-start' }}><SyncBadge /><span className="hint" style={{ flex: 1, minWidth: 0, overflowWrap: 'anywhere' }}>{user.email}</span>
             <button className="btn sm" onClick={async () => { close(); const m = await import('../../lib/cloud'); await m.signOutUser(); }}><LogOut size={14} />Sign out</button></div>
-        ) : <p className="hint">{cloudConfigured ? 'Not signed in.' : <>Saved on this device only. Add your Firebase keys to <b>.env.local</b> to sync across devices (see README).</>}</p>}
+        ) : <p className="hint">{cloudConfigured ? 'Not signed in.' : <>Saved on this device only. Add your Firebase keys (in <b>.env.local</b>, or in Vercel's Environment Variables) to get accounts and sync (see README).</>}</p>}
       </div>
       <div className="field"><span>A day counts for your streak when you finish</span>
         <Seg value={data.goal} onChange={(v) => set((x) => { x.goal = v; })} options={[{ v: 100, label: 'All tasks' }, { v: 80, label: '80%' }, { v: 60, label: '60%' }]} />

@@ -20,7 +20,7 @@ Built with **React 19 + TypeScript**, backed by **Firebase** (free plan), and in
 | Charts | **Recharts 3** | Insights charts, loaded only on that page |
 | Icons | **lucide-react** | |
 | Dates | Small typed helpers (`src/lib/dates.ts`), **date-fns** available | |
-| Backend | **Firebase 13** modular SDK: Auth (Google), Cloud Firestore (offline cache), Hosting | Free Spark plan; loaded only when configured |
+| Backend | **Firebase 13** modular SDK: Auth (Google + email), Cloud Firestore (offline cache) | Free Spark plan; loaded only when configured. Hosted on Vercel |
 | PWA | **vite-plugin-pwa** (Workbox) | Install to home screen, works offline |
 | Tests | **Vitest** | Streak rules, routine scheduling and the quick-add parser |
 | Lint | **oxlint** | |
@@ -67,7 +67,8 @@ src/
   lib/                   types, dates, domain rules (streaks, XP, badges), quick-add parser,
                          seed data, Firebase sync (cloud.ts), notifications, confetti
   lib/logic.test.ts      unit tests
-firestore.rules          only your Google account can read/write your data
+firestore.rules          each signed-in user can read/write only their own data
+vercel.json              Vercel build + cache headers
 firebase.json            hosting (dist/) + rules
 ```
 
@@ -80,26 +81,37 @@ npm run build      # production build in dist/
 ```
 Requires Node 20.19+ or 22.12+.
 
-## Connect the free Firebase backend
-1. **Create a project** at https://console.firebase.google.com.
-2. **Turn on sign-in:** under **Authentication > Sign-in method**, enable **Google**.
-3. **Create the database:** under **Firestore Database**, click **Create database**. Use production mode and the `asia-south1` (Mumbai) location.
-4. **Copy your keys:** in **Project settings > Your apps**, add a Web app `</>`. Copy `.env.example` to `.env.local` and paste in the values.
-5. **Lock it to you:** in `firestore.rules`, replace `YOUR_EMAIL@gmail.com` with your Google account.
-6. **Set the project ID:** put your project ID in `.firebaserc`.
-7. **Deploy:**
-   ```bash
-   npm install -g firebase-tools
-   firebase login
-   npm run deploy          # builds, then deploys hosting + rules
-   ```
-8. **Open the app** at the `https://<project>.web.app` link and sign in.
-   - On a phone, use **Add to Home Screen**.
-   - On a desktop, click the install icon in the address bar.
+## Accounts and saving (Firebase, free)
+Without Firebase keys the app runs in **local mode**: data stays in that one browser only.
+With keys, everyone gets their own account (**Google** or **email + password**) and their data is saved in Firestore, so it follows them to every device.
+Each user can only read and write their own data (`users/{uid}`, see `firestore.rules`).
 
-**Moving from earlier versions.** Data uses the same format as StreakFire v2 and v3:
-- **Same browser:** local data is picked up automatically.
-- **Same Firebase project:** your existing data loads as soon as you sign in.
+### 1. Set up Firebase (one time)
+1. **Create a project** at https://console.firebase.google.com (Analytics not needed).
+2. **Turn on sign-in:** **Build > Authentication > Get started > Sign-in method**, enable **Google** and **Email/Password**.
+3. **Create the database:** **Build > Firestore Database > Create database**, production mode, location `asia-south1` (Mumbai).
+4. **Publish the rules:** in **Firestore Database > Rules**, paste the contents of `firestore.rules` and click **Publish**.
+5. **Get your keys:** **Project settings (gear) > Your apps > Web `</>`**, register an app, and copy the `firebaseConfig` values.
+
+### 2. Run locally with accounts
+Copy `.env.example` to `.env.local`, paste in the six values, then `npm run dev`.
+
+### 3. Deploy to Vercel
+1. Push this folder to a GitHub repo, then on https://vercel.com click **Add New > Project** and import it.
+   If the repo holds other apps too, set **Root Directory** to `streakfire-react`.
+   Framework, build command and output folder come from `vercel.json`.
+2. Under **Environment Variables**, add the six keys from `.env.example` with your values:
+   `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_STORAGE_BUCKET`, `VITE_FIREBASE_MESSAGING_SENDER_ID`, `VITE_FIREBASE_APP_ID`.
+3. Click **Deploy**. (If you add or change variables later, redeploy: they are baked in at build time.)
+4. **Allow your Vercel domain to sign in:** in Firebase, **Authentication > Settings > Authorized domains > Add domain**, add `your-app.vercel.app` (and any custom domain).
+   Without this, Google sign-in fails with `auth/unauthorized-domain`.
+5. Open the site, create an account, and you're set. On a phone use **Add to Home Screen**.
+
+Or from the terminal: `npm i -g vercel`, then `vercel` in this folder (add the env vars when prompted or in the dashboard), then `vercel --prod`.
+
+**Hosting on Firebase instead** still works: put your project ID in `.firebaserc`, then `npm run deploy`.
+
+**Moving from earlier versions.** If you used the app in local mode, the first time you sign in on that browser your local data is copied into your new account.
 
 ### Test against the Firebase emulators (optional)
 ```bash
@@ -109,7 +121,8 @@ VITE_FIREBASE_API_KEY=demo VITE_FIREBASE_PROJECT_ID=demo-streakfire VITE_USE_EMU
 
 ## Free plan limits (Spark, no credit card)
 - **Firestore:** 1 GiB stored, 50,000 reads and 20,000 writes per day.
-- **Hosting:** 10 GB storage and 360 MB transfer per day.
+- **Auth:** free for email and Google sign-in.
+- **Vercel Hobby:** free for personal projects.
 
 ## Known limits
 - **Reminders need the app running.** They fire while the app is open or installed and running. Push notifications when it's fully closed need Cloud Functions, which is on the pay-as-you-go Blaze plan.
